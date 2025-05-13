@@ -15,6 +15,7 @@ export class SceneManager {
     this.setupEventListeners();
     this.floor = null;
     this.shaderManager = null;
+    this.lightingManager = null;
   }
 
   initScene() {
@@ -50,6 +51,10 @@ export class SceneManager {
 
   setShaderManager(shaderManager) {
     this.shaderManager = shaderManager;
+  }
+  
+  setLightingManager(lightingManager) {
+    this.lightingManager = lightingManager;
   }
 
   addFloor(shaderManager) {
@@ -96,6 +101,10 @@ export class SceneManager {
     
     if (this.shaderManager) {
       this.shaderManager.updateUniforms();
+    }
+    
+    if (this.lightingManager) {
+      this.lightingManager.updateLightHelpers();
     }
     
     this.renderer.render(this.scene, this.camera);

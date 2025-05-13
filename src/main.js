@@ -19,6 +19,7 @@ class App {
     // Connect managers and add floor
     this.shaderManager.setLights(this.lightingManager.getLights());
     this.sceneManager.setShaderManager(this.shaderManager);
+    this.sceneManager.setLightingManager(this.lightingManager);
     this.sceneManager.addFloor(this.shaderManager);
     
     // Initialize domino manager with shader manager
@@ -48,7 +49,8 @@ class App {
       this.sceneManager.scene,
       this.dominoCount,
       this.dominoSpacing,
-      this.dominoProps
+      this.dominoProps,
+      this.lightingManager
     );
     
     // Start animation loop
