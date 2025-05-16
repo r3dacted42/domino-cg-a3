@@ -26,7 +26,7 @@ export class LightingManager {
     primaryLight.shadow.camera.near = 0.5;
     primaryLight.shadow.camera.far = 50;
     
-    this.optimizeShadowFrustum(primaryLight, 10);
+    this.optimizeShadowFrustum(primaryLight, 20);
     
     this.scene.add(primaryLight);
     this.lights.push(primaryLight);
@@ -42,7 +42,7 @@ export class LightingManager {
     secondaryLight.castShadow = true;
     secondaryLight.shadow.mapSize.width = 1024;
     secondaryLight.shadow.mapSize.height = 1024;
-    this.optimizeShadowFrustum(secondaryLight, 10);
+    this.optimizeShadowFrustum(secondaryLight, 20);
     this.scene.add(secondaryLight);
     this.lights.push(secondaryLight);
     

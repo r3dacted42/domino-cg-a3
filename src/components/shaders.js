@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { getTextureByName } from "../lib/texture";
 
 const shaderCommon = {
   uniforms: {
@@ -30,127 +31,143 @@ const shaderCommon = {
 };
 
 const gouraudVertexShader = `
-  varying vec3 vColor;
-  uniform vec3 diffuseColor;
-  uniform float roughness;
-  uniform float metalness;
+// gouraudVertexShader
+varying vec3 vColor;
+varying vec2 vUv;
 
-  struct PointLight {
-    vec3 position;
-    vec3 color;
-    float intensity;
-  };
-  
-  uniform PointLight pointLights[3];
-  uniform vec3 ambientLightColor;
-  uniform int numActiveLights;
+uniform vec3  diffuseColor;
+uniform float roughness;
+uniform float metalness;
 
-  void main() {
-    vec3 normal = normalize(normalMatrix * normal);
-    vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-    
-    // Ambient component
-    vec3 ambient = ambientLightColor * diffuseColor;
-    
-    vColor = ambient;
-    
-    // Loop through active lights
-    for(int i = 0; i < 3; i++) {
-      if (i >= numActiveLights) break;
-      
-      vec3 lightDirection = normalize(pointLights[i].position - worldPosition.xyz);
-      
-      // Diffuse component (Lambert)
-      float diffuseFactor = max(dot(normal, lightDirection), 0.0);
-      vec3 diffuse = pointLights[i].color * pointLights[i].intensity * diffuseFactor * diffuseColor;
-      
-      // Specular component (Blinn-Phong)
-      vec3 viewDirection = normalize(cameraPosition - worldPosition.xyz);
-      vec3 halfwayDir = normalize(lightDirection + viewDirection);
-      float specularFactor = pow(max(dot(normal, halfwayDir), 0.0), 32.0 + 64.0 * metalness);
-      vec3 specular = pointLights[i].color * pointLights[i].intensity * specularFactor * metalness;
-      
-      vColor += diffuse + specular;
-    }
-    
-    // Apply roughness (reduces overall brightness)
-    vColor = mix(vColor, vColor * (1.0 - roughness * 0.5), roughness);
-    vColor = clamp(vColor, 0.0, 1.0);
-    
-    gl_Position = projectionMatrix * viewMatrix * worldPosition;
+struct PointLight {
+  vec3  position;
+  vec3  color;
+  float intensity;
+};
+uniform PointLight pointLights[3];
+uniform vec3 ambientLightColor;
+uniform int  numActiveLights;
+
+void main() {
+  vUv = uv;
+
+  vec3 normal        = normalize(normalMatrix * normal);
+  vec4 worldPosition = modelMatrix  * vec4(position, 1.0);
+
+  /* ----- ambient ----- */
+  vec3 ambient = ambientLightColor * diffuseColor;
+  vColor       = ambient;
+
+  /* ----- lights ----- */
+  for (int i = 0; i < 3; ++i) {
+    if (i >= numActiveLights) break;
+
+    vec3 lightDir = normalize(pointLights[i].position - worldPosition.xyz);
+
+    /* diffuse (Lambert) */
+    float diff  = max(dot(normal, lightDir), 0.0);
+    vec3 diffuse = pointLights[i].color * pointLights[i].intensity * diff * diffuseColor;
+
+    /* specular (Blinn-Phong) */
+    vec3 viewDir   = normalize(cameraPosition - worldPosition.xyz);
+    vec3 halfDir   = normalize(lightDir + viewDir);
+    float specPow  = 32.0 + 64.0 * metalness;
+    float specFac  = pow(max(dot(normal, halfDir), 0.0), specPow);
+    vec3 specular  = pointLights[i].color * pointLights[i].intensity * specFac * metalness;
+
+    vColor += diffuse + specular;
   }
+
+  /* roughness dampening */
+  vColor = mix(vColor, vColor * (1.0 - roughness * 0.5), roughness);
+  vColor = clamp(vColor, 0.0, 1.0);
+
+  gl_Position = projectionMatrix * viewMatrix * worldPosition;
+}
 `;
 
 const gouraudFragmentShader = `
-  varying vec3 vColor;
-  
-  void main() {
-    gl_FragColor = vec4(vColor, 1.0);
-  }
+varying vec3 vColor;
+varying vec2 vUv;
+
+uniform sampler2D map;
+
+void main() {
+  vec3 texColor = texture2D(map, vUv).rgb;
+  gl_FragColor  = vec4(texColor * vColor, 1.0);
+}
 `;
 
 const phongVertexShader = `
-  varying vec3 vNormal;
-  varying vec3 vWorldPosition;
-  
-  void main() {
-    vNormal = normalize(normalMatrix * normal);
-    vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-    vWorldPosition = worldPosition.xyz;
-    
-    gl_Position = projectionMatrix * viewMatrix * worldPosition;
-  }
+varying vec3 vNormal;
+varying vec3 vWorldPosition;
+varying vec2 vUv;
+
+void main() {
+  vUv           = uv;
+  vNormal       = normalize(normalMatrix * normal);
+  vec4 wp       = modelMatrix * vec4(position, 1.0);
+  vWorldPosition = wp.xyz;
+
+  gl_Position = projectionMatrix * viewMatrix * wp;
+}
 `;
 
 const phongFragmentShader = `
-  varying vec3 vNormal;
-  varying vec3 vWorldPosition;
-  
-  uniform vec3 diffuseColor;
-  uniform float roughness;
-  uniform float metalness;
-  
-  struct PointLight {
-    vec3 position;
-    vec3 color;
-    float intensity;
-  };
-  
-  uniform PointLight pointLights[3];
-  uniform vec3 ambientLightColor;
-  uniform int numActiveLights;
+varying vec3 vNormal;
+varying vec3 vWorldPosition;
+varying vec2 vUv;
 
-  void main() {
-    vec3 normal = normalize(vNormal);
-    
-    // Ambient component
-    vec3 color = ambientLightColor * diffuseColor;
-    
-    // Loop through active lights
-    for(int i = 0; i < 3; i++) {
-      if (i >= numActiveLights) break;
-      
-      vec3 lightDirection = normalize(pointLights[i].position - vWorldPosition);
-      
-      // Diffuse component (Lambert)
-      float diffuseFactor = max(dot(normal, lightDirection), 0.0);
-      vec3 diffuse = pointLights[i].color * pointLights[i].intensity * diffuseFactor * diffuseColor;
-      
-      // Specular component (Blinn-Phong)
-      vec3 viewDirection = normalize(cameraPosition - vWorldPosition);
-      vec3 halfwayDir = normalize(lightDirection + viewDirection);
-      float specularFactor = pow(max(dot(normal, halfwayDir), 0.0), 32.0 + 64.0 * metalness);
-      vec3 specular = pointLights[i].color * pointLights[i].intensity * specularFactor * metalness;
-      
-      color += diffuse + specular;
-    }
-    
-    // Apply roughness (reduces overall brightness)
-    color = mix(color, color * (1.0 - roughness * 0.5), roughness);
-    color = clamp(color, 0.0, 1.0);
-    
-    gl_FragColor = vec4(color, 1.0);
+uniform sampler2D map;
+uniform vec3  diffuseColor;
+uniform float roughness;
+uniform float metalness;
+
+struct PointLight {
+  vec3  position;
+  vec3  color;
+  float intensity;
+};
+uniform PointLight pointLights[3];
+uniform vec3 ambientLightColor;
+uniform int  numActiveLights;
+
+void main() {
+  vec3 normal = normalize(vNormal);
+
+  /* ambient */
+  vec3 color = ambientLightColor * diffuseColor;
+
+  /* lights */
+  for (int i = 0; i < 3; ++i) {
+    if (i >= numActiveLights) break;
+
+    vec3 lightDir  = normalize(pointLights[i].position - vWorldPosition);
+
+    /* diffuse */
+    float diff    = max(dot(normal, lightDir), 0.0);
+    vec3 diffuse  = pointLights[i].color * pointLights[i].intensity * diff * diffuseColor;
+
+    /* specular */
+    vec3 viewDir  = normalize(cameraPosition - vWorldPosition);
+    vec3 halfDir  = normalize(lightDir + viewDir);
+    float specPow = 32.0 + 64.0 * metalness;
+    float specFac = pow(max(dot(normal, halfDir), 0.0), specPow);
+    vec3 specular = pointLights[i].color * pointLights[i].intensity * specFac * metalness;
+
+    color += diffuse + specular;
   }
+
+  /* roughness dampening */
+  color = mix(color, color * (1.0 - roughness * 0.5), roughness);
+  color = clamp(color, 0.0, 1.0);
+
+  /* texture modulation */
+  vec3 texColor = texture2D(map, vUv).rgb;
+  color *= texColor;
+
+  gl_FragColor = vec4(color, 1.0);
+}
 `;
 
 export class ShaderManager {
@@ -167,8 +184,8 @@ export class ShaderManager {
     this.lights = lights;
   }
 
-  createMaterial(color, roughness, metalness, shading = this.currentShading) {
-    const materialKey = `${color}-${roughness}-${metalness}-${shading}`;
+  createMaterial(color, roughness, metalness, textureName, shading = this.currentShading) {
+    const materialKey = `${color}-${roughness}-${metalness}-${shading}-${textureName}`;
 
     if (!this.materials.has(materialKey)) {
       const uniforms = {
@@ -176,6 +193,7 @@ export class ShaderManager {
         diffuseColor: { value: new THREE.Color(color) },
         roughness: { value: roughness },
         metalness: { value: metalness },
+        map: { value: getTextureByName(textureName) },
       };
 
       const material = new THREE.ShaderMaterial({
@@ -239,7 +257,7 @@ export class ShaderManager {
           if (material.uniforms.ambientLightColor && this.lights[0]) {
             material.uniforms.ambientLightColor.value.copy(this.lights[0].color);
           }
-          
+
           // Update directional lights
           if (material.uniforms.pointLights) {
             // Primary light
@@ -248,21 +266,21 @@ export class ShaderManager {
               material.uniforms.pointLights.value[0].color.copy(this.lights[1].color);
               material.uniforms.pointLights.value[0].intensity = this.lights[1].intensity;
             }
-            
+
             // Secondary light
             if (this.lights[2]) {
               material.uniforms.pointLights.value[1].position.copy(this.lights[2].position);
               material.uniforms.pointLights.value[1].color.copy(this.lights[2].color);
               material.uniforms.pointLights.value[1].intensity = this.lights[2].visible ? this.lights[2].intensity : 0;
             }
-            
+
             // Accent light
             if (this.lights[3]) {
               material.uniforms.pointLights.value[2].position.copy(this.lights[3].position);
               material.uniforms.pointLights.value[2].color.copy(this.lights[3].color);
               material.uniforms.pointLights.value[2].intensity = this.lights[3].visible ? this.lights[3].intensity : 0;
             }
-            
+
             // Update number of active lights
             if (material.uniforms.numActiveLights) {
               // Count visible lights (excluding ambient)

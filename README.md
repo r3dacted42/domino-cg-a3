@@ -127,3 +127,6 @@ The scene can be viewed through one of 2 cameras:
 - 10 marks for implementation of A3 .
 - 10 marks for implementation of A4
 - 10 marks for demo and viva
+
+## Credits:  
+- Wood Grain Texture Image: [Photo by FWStudio](https://www.pexels.com/photo/brown-wood-surface-172289/)

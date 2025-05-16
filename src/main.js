@@ -3,7 +3,7 @@ import { SceneManager } from './lib/scene';
 import { LightingManager } from './lib/lighting.js';
 import { DominoManager } from './components/domino';
 import { ShaderManager } from './components/shaders';
-import { ControlsManager } from './components/controls';
+import { setupControls } from './components/tweakingfr.js';
 
 class App {
   constructor() {
@@ -28,7 +28,7 @@ class App {
     this.dominoProps = {
       width: 0.8,
       height: 2.0,
-      depth: 0.3
+      depth: 0.3,
     };
     
     this.dominoCount = 9;
@@ -41,16 +41,15 @@ class App {
       this.dominoSpacing,
       this.dominoProps
     );
-    
-    // Initialize control manager
-    this.controlsManager = new ControlsManager(
+
+    setupControls(
       this.dominoManager,
       this.shaderManager,
       this.sceneManager.scene,
       this.dominoCount,
       this.dominoSpacing,
       this.dominoProps,
-      this.lightingManager
+      this.lightingManager,
     );
     
     // Start animation loop
