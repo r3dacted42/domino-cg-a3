@@ -34,6 +34,10 @@ class App {
     this.dominoCount = 9;
     this.dominoSpacing = 1.5;
     
+    // Add sample sphere (initially hidden) and register with domino manager
+    const sampleSphere = this.sceneManager.addSampleSphere(this.shaderManager, false);
+    this.dominoManager.registerExtraMesh(sampleSphere);
+    
     // Create initial domino arrangement
     this.dominoManager.createDominoLine(
       this.sceneManager.scene,
@@ -41,6 +45,10 @@ class App {
       this.dominoSpacing,
       this.dominoProps
     );
+    
+    // Update sample sphere to match a middle domino's material
+    const midDominoIndex = Math.floor(this.dominoCount / 2);
+    this.dominoManager.updateSampleSphere(sampleSphere, midDominoIndex);
 
     setupControls(
       this.dominoManager,
@@ -50,6 +58,7 @@ class App {
       this.dominoSpacing,
       this.dominoProps,
       this.lightingManager,
+      this.sceneManager
     );
     
     // Start animation loop

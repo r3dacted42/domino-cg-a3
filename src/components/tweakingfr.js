@@ -35,6 +35,7 @@ export function setupControls(
     dominoSpacing,
     dominoProps,
     lightingManager,
+    sceneManager,
 ) {
     const pane = new Pane({
         title: "controls",
@@ -51,9 +52,16 @@ export function setupControls(
         color: "#00ff00",
         texture: 0,
         texMapping: 0,
+        showSampleSphere: false,
+        sphereVariation: 4, // Default to middle domino (for 9 dominoes)
     };
 
-    const arrangementBinding = pane.addBinding(settings, 'arrangement', { options: arrangementOpts });
+    // Create a folder for scene settings
+    const sceneFolder = pane.addFolder({
+        title: 'Scene Settings',
+    });
+
+    const arrangementBinding = sceneFolder.addBinding(settings, 'arrangement', { options: arrangementOpts });
     arrangementBinding.on('change', (_e) => {
         dominoManager.switchArrangement(
             scene,
@@ -63,7 +71,7 @@ export function setupControls(
         );
     });
 
-    const countBinding = pane.addBinding(settings, 'count', { step: 1, min: 3, max: 13 });
+    const countBinding = sceneFolder.addBinding(settings, 'count', { step: 1, min: 3, max: 13 });
     countBinding.on('change', (e) => {
         const newValue = e.value;
         dominoManager.redrawDominos(
@@ -72,9 +80,19 @@ export function setupControls(
             settings.spacing,
             dominoProps,
         );
+        
+        // Update sphere variation slider max value
+        if (sphereVariationBinding) {
+            sphereVariationBinding.max = newValue - 1;
+            // Ensure sphere variation is valid for new count
+            if (settings.sphereVariation >= newValue) {
+                settings.sphereVariation = Math.floor(newValue / 2);
+                updateSampleSphere();
+            }
+        }
     });
 
-    const spacingBinding = pane.addBinding(settings, 'spacing', { step: 0.1, min: 0.3, max: 3 });
+    const spacingBinding = sceneFolder.addBinding(settings, 'spacing', { step: 0.1, min: 0.3, max: 3 });
     spacingBinding.on('change', (e) => {
         const newValue = e.value;
         dominoManager.redrawDominos(
@@ -85,29 +103,56 @@ export function setupControls(
         );
     });
 
-    const shadingBinding = pane.addBinding(settings, 'shading', { options: shadingOpts });
+    // Create a folder for material and lighting settings
+    const materialFolder = pane.addFolder({
+        title: 'Material & Lighting',
+    });
+
+    const sampleSphereBinding = materialFolder.addBinding(settings, 'showSampleSphere');
+    sampleSphereBinding.on('change', (e) => {
+        sceneManager.toggleSampleSphere(e.value);
+    });
+    
+    // Function to update the sample sphere
+    function updateSampleSphere() {
+        if (sceneManager.sampleSphere) {
+            dominoManager.updateSampleSphere(sceneManager.sampleSphere, settings.sphereVariation);
+        }
+    }
+    
+    // Add control for sphere variation
+    const sphereVariationBinding = materialFolder.addBinding(settings, 'sphereVariation', { 
+        step: 1, 
+        min: 0, 
+        max: dominoCount - 1,
+    });
+    sphereVariationBinding.on('change', () => {
+        updateSampleSphere();
+    });
+
+    const shadingBinding = materialFolder.addBinding(settings, 'shading', { options: shadingOpts });
     shadingBinding.on('change', (_e) => {
         shaderManager.toggleShading();
     });
 
-    const lightingBinding = pane.addBinding(settings, 'lighting', { options: lightingOpts });
+    const lightingBinding = materialFolder.addBinding(settings, 'lighting', { options: lightingOpts });
     lightingBinding.on('change', (e) => {
         const newValue = e.value;
         lightingManager.setLightingMode(newValue);
     });
 
-    const helpersBinding = pane.addBinding(settings, 'helpers');
+    const helpersBinding = materialFolder.addBinding(settings, 'helpers');
     helpersBinding.on('change', (_e) => {
         lightingManager.toggleHelpers();
     });
 
-    const colorsBinding = pane.addBinding(settings, 'color');
+    const colorsBinding = materialFolder.addBinding(settings, 'color');
     colorsBinding.on('change', (e) => {
         const newColor = e.value;
         dominoManager.setColor(newColor);
     });
 
-    const textureBinding = pane.addBinding(settings, 'texture', { options: textureOpts });
+    const textureBinding = materialFolder.addBinding(settings, 'texture', { options: textureOpts });
     textureBinding.on('change', (e) => {
         const newValue = e.value;
         texMappingBinding.hidden = (newValue === 0);
@@ -118,7 +163,7 @@ export function setupControls(
         dominoManager.setTextureName(newTextureName);
     });
 
-    const texMappingBinding = pane.addBinding(settings, 'texMapping', { 
+    const texMappingBinding = materialFolder.addBinding(settings, 'texMapping', { 
         options: texMappingOpts,
         hidden: true,
     });

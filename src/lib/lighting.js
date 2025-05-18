@@ -17,7 +17,7 @@ export class LightingManager {
     this.lights.push(ambientLight);
     
     // Primary light (always active)
-    const primaryLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    const primaryLight = new THREE.DirectionalLight(0xffffff, 1);
     primaryLight.position.set(5, 10, 7);
     primaryLight.castShadow = true;
     
@@ -37,8 +37,8 @@ export class LightingManager {
     this.lightHelpers.push(primaryHelper);
     
     // Secondary light
-    const secondaryLight = new THREE.DirectionalLight(0xffa500, 0.6); // Orange light
-    secondaryLight.position.set(-5, 8, -7);
+    const secondaryLight = new THREE.DirectionalLight(0xffa500, 0.7); // Orange light
+    secondaryLight.position.set(-5, 10, -7);
     secondaryLight.castShadow = true;
     secondaryLight.shadow.mapSize.width = 1024;
     secondaryLight.shadow.mapSize.height = 1024;
@@ -52,7 +52,7 @@ export class LightingManager {
     this.lightHelpers.push(secondaryHelper);
     
     // Third light (blue accent light)
-    const accentLight = new THREE.DirectionalLight(0x0088ff, 0.4); // Blue light
+    const accentLight = new THREE.DirectionalLight(0x0088ff, 0.5); // Blue light
     accentLight.position.set(7, 6, -4);
     this.scene.add(accentLight);
     this.lights.push(accentLight);

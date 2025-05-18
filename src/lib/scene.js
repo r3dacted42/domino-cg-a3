@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { applyCylindricalUV, applySphericalUV } from '../lib/uvMapping';
 
 export class SceneManager {
   constructor(container) {
@@ -16,6 +17,7 @@ export class SceneManager {
     this.floor = null;
     this.shaderManager = null;
     this.lightingManager = null;
+    this.sampleSphere = null;
   }
 
   initScene() {
@@ -77,6 +79,59 @@ export class SceneManager {
       shaderManager.registerMesh(this.floor, true);
     }
     return this.floor;
+  }
+
+  addSampleSphere(shaderManager, visible = false) {
+    if (this.sampleSphere) {
+      this.scene.remove(this.sampleSphere);
+    }
+    
+    // Use same default color as dominoes but don't set any textures by default
+    const baseColor = 0x00ff00;
+    const roughness = 0.5;
+    const metalness = 0.5;
+    
+    const sphereGeometry = new THREE.SphereGeometry(1.5, 32, 32);
+    
+    // Apply UV mapping for texture
+    applyCylindricalUV(sphereGeometry);
+    
+    const sphereMaterial = shaderManager ? 
+      shaderManager.createMaterial(baseColor, roughness, metalness) :
+      new THREE.MeshStandardMaterial({ color: baseColor, roughness: roughness, metalness: metalness });
+    
+    // Store properties in userData for later updates
+    sphereMaterial.userData.baseColor = baseColor;
+    sphereMaterial.userData.roughness = roughness;
+    sphereMaterial.userData.metalness = metalness;
+    
+    this.sampleSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+    this.sampleSphere.position.set(0, 2.5, 0);
+    this.sampleSphere.castShadow = true;
+    this.sampleSphere.receiveShadow = true;
+    this.sampleSphere.visible = visible;
+    this.scene.add(this.sampleSphere);
+    
+    if (shaderManager) {
+      shaderManager.registerMesh(this.sampleSphere);
+    }
+    return this.sampleSphere;
+  }
+  
+  toggleSampleSphere(visible) {
+    if (this.sampleSphere) {
+      this.sampleSphere.visible = visible;
+    }
+  }
+  
+  updateSphereTexMapping(mapping) {
+    if (this.sampleSphere) {
+      if (mapping === 'cylindrical') {
+        applyCylindricalUV(this.sampleSphere.geometry);
+      } else {
+        applySphericalUV(this.sampleSphere.geometry);
+      }
+    }
   }
 
   setupEventListeners() {
